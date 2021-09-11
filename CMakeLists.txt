@@ -15,7 +15,6 @@ option(LOVR_ENABLE_SYSTEM "Enable the system module" ON)
 option(LOVR_ENABLE_THREAD "Enable the thread module" ON)
 option(LOVR_ENABLE_TIMER "Enable the timer module" ON)
 
-option(LOVR_USE_LUAJIT "Use LuaJIT instead of Lua" ON)
 option(LOVR_USE_OPENVR "Enable the OpenVR backend for the headset module" ON)
 option(LOVR_USE_OPENXR "Enable the OpenXR backend for the headset module" OFF)
 option(LOVR_USE_WEBXR "Enable the WebXR backend for the headset module" OFF)
@@ -28,12 +27,11 @@ option(LOVR_USE_OCULUS_AUDIO "Enable the Oculus Audio spatializer (be sure to al
 option(LOVR_USE_LINUX_EGL "Use the EGL graphics extension on Linux" OFF)
 
 option(LOVR_SYSTEM_GLFW "Use the system-provided glfw" OFF)
-option(LOVR_SYSTEM_LUA "Use the system-provided Lua" OFF)
 option(LOVR_SYSTEM_ODE "Use the system-provided ODE" OFF)
 option(LOVR_SYSTEM_OPENXR "Use the system-provided OpenXR" OFF)
 
-option(LOVR_BUILD_EXE "Build an executable (or an apk on Android)" ON)
-option(LOVR_BUILD_SHARED "Build a shared library (takes precedence over LOVR_BUILD_EXE)" OFF)
+option(LOVR_BUILD_EXE "Build an executable (or an apk on Android)" OFF)
+option(LOVR_BUILD_SHARED "Build a shared library (takes precedence over LOVR_BUILD_EXE)" ON)
 option(LOVR_BUILD_BUNDLE "On macOS, build a .app bundle instead of a raw program" OFF)
 
 # Setup
@@ -86,43 +84,6 @@ if(NOT (EMSCRIPTEN OR ANDROID))
     set(LOVR_GLFW glfw ${GLFW_LIBRARIES})
   endif()
   unset(LIB_SUFFIX CACHE)
-endif()
-
-# Lua
-if(LOVR_USE_LUAJIT AND NOT EMSCRIPTEN)
-  # Required to make luajit compile without breaking linker cache on macOS Big Sur. Also, is a better,
-  # newer GC so enable it on all builds.
-  set(LUAJIT_ENABLE_GC64 ON)
-
-  if(LOVR_SYSTEM_LUA)
-    pkg_search_module(LUAJIT REQUIRED luajit)
-    include_directories(${LUAJIT_INCLUDE_DIRS})
-    set(LOVR_LUA ${LUAJIT_LIBRARIES})
-  else()
-    add_subdirectory(deps/luajit luajit)
-    set_target_properties(luajit PROPERTIES EXCLUDE_FROM_ALL 1)
-    include_directories(deps/luajit/src ${CMAKE_BINARY_DIR}/luajit)
-    set(LOVR_LUA libluajit)
-  endif()
-else()
-  if(LOVR_SYSTEM_LUA)
-    pkg_search_module(LUA REQUIRED lua)
-    include_directories(${LUA_INCLUDE_DIRS})
-    set(LOVR_LUA ${LUA_LIBRARIES})
-  else()
-    set(LUA_SRC
-      lapi.c lauxlib.c lbaselib.c lcode.c ldblib.c ldebug.c ldo.c ldump.c lfunc.c lgc.c linit.c
-      liolib.c llex.c lmathlib.c lmem.c loadlib.c lobject.c lopcodes.c loslib.c lparser.c lstate.c
-      lstring.c lstrlib.c ltable.c ltablib.c ltm.c lundump.c lvm.c lzio.c
-    )
-    list(TRANSFORM LUA_SRC PREPEND deps/lua/)
-    add_library(lua SHARED ${LUA_SRC})
-    target_link_libraries(lua m)
-    target_link_libraries(lua dl)
-    target_compile_definitions(lua PRIVATE -DLUA_USE_DLOPEN)
-    include_directories(deps/lua)
-    set(LOVR_LUA lua)
-  endif()
 endif()
 
 # MSDF
@@ -323,30 +284,14 @@ endif()
 
 # LÖVR
 
-# Plugins
-set(LOVR 1)
-link_libraries(${LOVR_LUA})
-file(GLOB LOVR_PLUGINS plugins/*)
-foreach(plugin ${LOVR_PLUGINS})
-  if(IS_DIRECTORY ${plugin} AND EXISTS ${plugin}/CMakeLists.txt)
-    add_subdirectory(${plugin})
-    get_directory_property(PLUGIN_TARGETS DIRECTORY ${plugin} DEFINITION LOVR_PLUGIN_TARGETS)
-    if(NOT PLUGIN_TARGETS)
-      get_directory_property(PLUGIN_TARGETS DIRECTORY ${plugin} BUILDSYSTEM_TARGETS)
-    endif()
-    set_target_properties(${PLUGIN_TARGETS} PROPERTIES LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/plugins/lib")
-    list(APPEND ALL_PLUGIN_TARGETS ${PLUGIN_TARGETS})
-  endif()
-endforeach()
-
 set(LOVR_SRC
-  src/main.c
+  #src/main.c
   src/core/fs.c
   src/core/map.c
   src/core/util.c
   src/core/zip.c
-  src/api/api.c
-  src/api/l_lovr.c
+  #src/api/api.c
+  #src/api/l_lovr.c
 )
 
 if(LOVR_USE_PICO)
@@ -366,7 +311,6 @@ set_target_properties(lovr PROPERTIES C_STANDARD 99)
 target_include_directories(lovr PRIVATE src src/modules src/lib/stdatomic)
 target_link_libraries(lovr
   ${LOVR_GLFW}
-  ${LOVR_LUA}
   ${LOVR_MSDF}
   ${LOVR_ODE}
   ${LOVR_OPENGL}
@@ -390,8 +334,8 @@ if(LOVR_ENABLE_AUDIO)
   target_sources(lovr PRIVATE
     src/modules/audio/audio.c
     src/modules/audio/spatializer_simple.c
-    src/api/l_audio.c
-    src/api/l_audio_source.c
+    #src/api/l_audio.c
+    #src/api/l_audio_source.c
   )
 
   if(LOVR_USE_STEAM_AUDIO)
@@ -419,12 +363,12 @@ if(LOVR_ENABLE_DATA)
     src/modules/data/modelData_stl.c
     src/modules/data/rasterizer.c
     src/modules/data/sound.c
-    src/api/l_data.c
-    src/api/l_data_blob.c
-    src/api/l_data_image.c
-    src/api/l_data_modelData.c
-    src/api/l_data_rasterizer.c
-    src/api/l_data_sound.c
+    #src/api/l_data.c
+    #src/api/l_data_blob.c
+    #src/api/l_data_image.c
+    #src/api/l_data_modelData.c
+    #src/api/l_data_rasterizer.c
+    #src/api/l_data_sound.c
     src/lib/minimp3/minimp3.c
     src/lib/stb/stb_image.c
     src/lib/stb/stb_truetype.c
@@ -438,7 +382,7 @@ endif()
 if(LOVR_ENABLE_EVENT)
   target_sources(lovr PRIVATE
     src/modules/event/event.c
-    src/api/l_event.c
+    #src/api/l_event.c
   )
 else()
   target_compile_definitions(lovr PRIVATE LOVR_DISABLE_EVENT)
@@ -448,7 +392,7 @@ if(LOVR_ENABLE_FILESYSTEM)
   target_sources(lovr PRIVATE
     src/modules/filesystem/filesystem.c
     src/modules/filesystem/file.c
-    src/api/l_filesystem.c
+    #src/api/l_filesystem.c
   )
 else()
   target_compile_definitions(lovr PRIVATE LOVR_DISABLE_FILESYSTEM)
@@ -461,15 +405,15 @@ if(LOVR_ENABLE_GRAPHICS)
     src/modules/graphics/material.c
     src/modules/graphics/model.c
     src/modules/graphics/opengl.c
-    src/api/l_graphics.c
-    src/api/l_graphics_canvas.c
-    src/api/l_graphics_font.c
-    src/api/l_graphics_material.c
-    src/api/l_graphics_mesh.c
-    src/api/l_graphics_model.c
-    src/api/l_graphics_shader.c
-    src/api/l_graphics_shaderBlock.c
-    src/api/l_graphics_texture.c
+    #src/api/l_graphics.c
+    #src/api/l_graphics_canvas.c
+    #src/api/l_graphics_font.c
+    #src/api/l_graphics_material.c
+    #src/api/l_graphics_mesh.c
+    #src/api/l_graphics_model.c
+    #src/api/l_graphics_shader.c
+    #src/api/l_graphics_shaderBlock.c
+    #src/api/l_graphics_texture.c
     src/resources/shaders.c
     src/lib/glad/glad.c
   )
@@ -479,7 +423,7 @@ endif()
 
 if(LOVR_ENABLE_HEADSET)
   target_sources(lovr PRIVATE
-    src/api/l_headset.c
+    #src/api/l_headset.c
     src/modules/headset/headset.c
   )
 
@@ -521,10 +465,10 @@ if(LOVR_ENABLE_MATH)
     src/modules/math/curve.c
     src/modules/math/pool.c
     src/modules/math/randomGenerator.c
-    src/api/l_math.c
-    src/api/l_math_curve.c
-    src/api/l_math_randomGenerator.c
-    src/api/l_math_vectors.c
+    #src/api/l_math.c
+    #src/api/l_math_curve.c
+    #src/api/l_math_randomGenerator.c
+    #src/api/l_math_vectors.c
     src/lib/noise1234/noise1234.c
   )
 else()
@@ -534,11 +478,11 @@ endif()
 if(LOVR_ENABLE_PHYSICS)
   target_sources(lovr PRIVATE
     src/modules/physics/physics.c
-    src/api/l_physics.c
-    src/api/l_physics_collider.c
-    src/api/l_physics_joints.c
-    src/api/l_physics_shapes.c
-    src/api/l_physics_world.c
+    #src/api/l_physics.c
+    #src/api/l_physics_collider.c
+    #src/api/l_physics_joints.c
+    #src/api/l_physics_shapes.c
+    #src/api/l_physics_world.c
   )
 else()
   target_compile_definitions(lovr PRIVATE LOVR_DISABLE_PHYSICS)
@@ -547,7 +491,7 @@ endif()
 if(LOVR_ENABLE_SYSTEM)
   target_sources(lovr PRIVATE
     src/modules/system/system.c
-    src/api/l_system.c
+    #src/api/l_system.c
   )
 else()
   target_compile_definitions(lovr PRIVATE LOVR_DISABLE_SYSTEM)
@@ -557,9 +501,9 @@ if(LOVR_ENABLE_THREAD)
   target_sources(lovr PRIVATE
     src/modules/thread/channel.c
     src/modules/thread/thread.c
-    src/api/l_thread.c
-    src/api/l_thread_channel.c
-    src/api/l_thread_thread.c
+    #src/api/l_thread.c
+    #src/api/l_thread_channel.c
+    #src/api/l_thread_thread.c
     src/lib/tinycthread/tinycthread.c
   )
 else()
@@ -567,13 +511,13 @@ else()
 endif()
 
 if(LOVR_ENABLE_TIMER)
-  target_sources(lovr PRIVATE src/modules/timer/timer.c src/api/l_timer.c)
+  target_sources(lovr PRIVATE src/modules/timer/timer.c)
 else()
   target_compile_definitions(lovr PRIVATE LOVR_DISABLE_TIMER)
 endif()
 
 # Resources
-file(GLOB LOVR_RESOURCES "src/resources/*.ttf" "src/resources/*.json" "src/resources/*.lua")
+file(GLOB LOVR_RESOURCES "src/resources/*.ttf" "src/resources/*.json")
 foreach(path ${LOVR_RESOURCES})
 
   # Turn the absolute path into a C variable like src_resources_boot_lua
@@ -620,7 +564,6 @@ if(WIN32)
   endfunction()
 
   move_dll(${LOVR_GLFW})
-  move_dll(${LOVR_LUA})
   move_dll(${LOVR_ODE})
   move_dll(${LOVR_OPENVR})
   move_dll(${LOVR_MSDF})
@@ -661,7 +604,6 @@ elseif(APPLE)
     endif()
   endfunction()
   move_lib(${LOVR_GLFW})
-  move_lib(${LOVR_LUA})
   move_lib(${LOVR_ODE})
   move_lib(${LOVR_OPENVR})
   move_lib(${LOVR_MSDF})
@@ -839,7 +781,6 @@ elseif(UNIX)
     )
   endfunction()
   move_lib(${LOVR_GLFW})
-  move_lib(${LOVR_LUA})
   move_lib(${LOVR_ODE})
   move_lib(${LOVR_OPENVR})
   move_lib(${LOVR_MSDF})
